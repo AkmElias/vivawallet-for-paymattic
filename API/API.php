@@ -118,8 +118,12 @@ class API
         // }
     }
 
-    public function makeApiCall($path, $args, $formId, $method = 'GET')
+    public function makeApiCall($path, $args, $formId, $method = 'GET', $accessTokenReq = false)
     {
+        if ($accessTokenReq) {
+            return $this->getAccessToken($path, $formId, $args);
+        }
+
         $keys = (new VivaWalletSettings())->getApiKeys($formId);
 
 
@@ -127,14 +131,14 @@ class API
             'Content-type'  => 'application/json'
         ];
 
-        $endPoint = 'https://gatewayt.moneris.com/chktv2/request/request.php';
+        $endPoint = 'https://demo-accounts.vivapayments.com/';
 
         if ($keys['payment_mode'] == 'live') {
-            $endPoint = 'https://gateway.moneris.com/chktv2/request/request.php';
+            $endPoint = 'https://api.vivapayments.com/';
         }
 
         if ($method == 'POST') {
-            $response = wp_remote_post('https://gatewayt.moneris.com/chktv2/request/request.php', [
+            $response = wp_remote_post(`$endPoint . $path`, [
                 'headers' => $headers,
                 'body'    => json_encode($args)
             
@@ -163,4 +167,56 @@ class API
         }
         return $responseData;
     }
+
+    public function getAccessToken($path, $args, $formId, $method = 'POST')
+    {
+        $keys = (new VivaWalletSettings())->getApiKeys($formId);
+
+        $headers = [
+            'Content-type'  => 'application/json',
+            'Authorization' => [
+                'username' => $keys['test_client_id'],
+                'password' => $keys['test_client_secret']
+            ]
+        ];
+
+        $endPoint = 'https://demo-accounts.vivapayments.com/';
+
+        if ($keys['payment_mode'] == 'live') {
+            $endPoint = 'https://accounts.vivapayments.com/';
+            $headers['Authorization']['username'] = $keys['live_client_id'];
+            $headers['Authorization']['password'] = $keys['live_client_secret'];
+        }
+
+        if ($method == 'POST') {
+            $response = wp_remote_post($endPoint, [
+                'headers' => $headers,
+                'body'    => json_encode($args)
+            
+            ]);
+        } else {
+            $response = wp_remote_request(`$endPoint . $path`, [
+                'headers' => $headers,
+                'body'    => $args
+            ]);
+        }
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $responseData = json_decode($body, true);
+
+        if (!$responseData) {
+            return [
+                'response' => array(
+                    'success' => 'false',
+                    'error' => __('Unknown Vivalwallet API request error', 'wp-payment-form-pro')
+                )
+            ];
+        }
+        return $responseData;
+    }
+    
 }
