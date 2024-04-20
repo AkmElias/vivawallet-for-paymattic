@@ -19,7 +19,7 @@ class API
     }
     public function verifyIPN()
     {
-        if (!isset($_REQUEST['wpf_moneris_listener'])) {
+        if (!isset($_REQUEST['wpf_vivawallet_listener'])) {
             return;
         }
         // Check the request method is POST
@@ -38,7 +38,7 @@ class API
             ini_set('post_max_size', '12M');
         }
         // Start the encoded data collection with notification command
-        $encoded_data = 'cmd=_notify-validate';
+        $encoded_data = '';
 
         // Get current arg separator
         $arg_separator = ini_get('arg_separator.output');
@@ -90,32 +90,6 @@ class API
             return;
         }
         // implements the logic to handle the IPN if needed, now its not implemented
-        // $vendorTransaction = $this->makeApiCall('payments/' . $data['id'], [], $submission->form_id, 'GET');
-
-        // if (is_wp_error($vendorTransaction)) {
-        //     do_action('wppayform_log_data', [
-        //         'parent_source_id' => $submission->form_id,
-        //         'source_type'      => 'submission_item',
-        //         'source_id'        => $submission->id,
-        //         'component'        => 'Payment',
-        //         'status'           => 'error',
-        //         'title'            => 'Mollie Payment Webhook Error',
-        //         'description'      => $vendorTransaction->get_error_message()
-        //     ]);
-        // }
-
-        // $status = $vendorTransaction['status'];
-
-        // if ($status == 'captured') {
-        //     $status = 'paid';
-        // }
-
-        // do_action('wppayform_ipn_moneris_action_' . $status, $submission, $vendorTransaction, $data);
-
-        // if ($refundAmount = Arr::get($vendorTransaction, 'amountRefunded.value')) {
-        //     $refundAmount = intval($refundAmount * 100); // in cents
-        //     do_action('wppayform_ipn_moneris_action_refunded', $refundAmount, $submission, $vendorTransaction, $data);
-        // }
     }
 
     public function makeApiCall($path, $args, $formId, $method = 'GET', $accessTokenReq = false)
