@@ -111,14 +111,17 @@ class API
             $endPoint = 'https://api.vivapayments.com/';
         }
 
+        // construct the endpoint with specific path
+        $endPoint = $endPoint . $path;
+
         if ($method == 'POST') {
-            $response = wp_remote_post(`$endPoint . $path`, [
+            $response = wp_remote_post($endPoint, [
                 'headers' => $headers,
                 'body'    => json_encode($args)
             
             ]);
         } else {
-            $response = wp_remote_request(`$endPoint . $path`, [
+            $response = wp_remote_request($endPoint, [
                 'headers' => $headers,
                 'body'    => $args
             ]);
@@ -161,6 +164,9 @@ class API
             $headers['Authorization']['username'] = $keys['live_client_id'];
             $headers['Authorization']['password'] = $keys['live_client_secret'];
         }
+        
+         // construct the endpoint with specific path
+         $endPoint = $endPoint . $path;
 
         if ($method == 'POST') {
             $response = wp_remote_post($endPoint, [
@@ -169,7 +175,7 @@ class API
             
             ]);
         } else {
-            $response = wp_remote_request(`$endPoint . $path`, [
+            $response = wp_remote_request($endPoint, [
                 'headers' => $headers,
                 'body'    => $args
             ]);
