@@ -33,10 +33,10 @@ class VivaWalletProcessor
         (new \VivaWalletPaymentForPaymattic\API\API())->init();
 
         add_filter('wppayform/choose_payment_method_for_submission', array($this, 'choosePaymentMethod'), 10, 4);
-        add_action('wppayform/form_submission_make_payment_flutterwave', array($this, 'makeFormPayment'), 10, 6);
+        add_action('wppayform/form_submission_make_payment_vivawallet', array($this, 'makeFormPayment'), 10, 6);
         add_action('wppayform_payment_frameless_' . $this->method, array($this, 'handleSessionRedirectBack'));
         add_filter('wppayform/entry_transactions_' . $this->method, array($this, 'addTransactionUrl'), 10, 2);
-        // add_action('wppayform_ipn_flutterwave_action_refunded', array($this, 'handleRefund'), 10, 3);
+        // add_action('wppayform_ipn_vivawallet_action_refunded', array($this, 'handleRefund'), 10, 3);
         add_filter('wppayform/submitted_payment_items_' . $this->method, array($this, 'validateSubscription'), 10, 4);
     }
 
@@ -71,7 +71,7 @@ class VivaWalletProcessor
         }
         // Now We have to analyze the elements and return our payment method
         foreach ($elements as $element) {
-            if ((isset($element['type']) && $element['type'] == 'flutterwave_gateway_element')) {
+            if ((isset($element['type']) && $element['type'] == 'vivawallet_gateway_element')) {
                 return 'vivawallet';
             }
         }
@@ -79,9 +79,9 @@ class VivaWalletProcessor
     }
 
     public function makeFormPayment($transactionId, $submissionId, $form_data, $form, $hasSubscriptions)
-    {
+    {      
         $paymentMode = $this->getPaymentMode();
-
+       
         $transactionModel = new Transaction();
         if ($transactionId) {
             $transactionModel->updateTransaction($transactionId, array(
@@ -128,57 +128,86 @@ class VivaWalletProcessor
         ), home_url());
     }
 
-    public function handleRedirect($transaction, $submission, $form, $methodSettings)
+    public function handleRedirect($transaction, $submission, $form, $paymentMode)
     {
-        $currencyIsSupported = $this->checkForSupportedCurrency($submission);
-        
-        if (!$currencyIsSupported) {
+       
+        // Get accessToken
+        $response = (new API())->makeApiCall('connect/token', [], $form->ID, 'POST', true, '');
+
+        if (!isset($response['access_token'])) {
             wp_send_json_error([
-                'message' => sprintf(__('%s is not supported by vivawallet', 'vivawallet-payment-for-paymattic'), $submission->currency),
+                'message' => __('Unable to get access token from vivawallet', 'vivawallet-payment-for-paymattic'),
                 'payment_error' => true
             ], 423);
+        } 
+
+        $accessToken = $response['access_token'];
+        dd($accessToken);
+        die();
+        // now construct payment
+        $paymentArgs = [
+            'amount' => $transaction->payment_total,
+        ];
+
+        // make create payment order api call
+        $payment = (new API())->makeApiCall('checkout/v2/orders', $paymentArgs, $form->ID, 'POST', false, $accessToken);
+        dd($payment, 'order id');
+        die();
+        $orderCode = Arr::get($payment, 'OrderCode');
+        // $currencyIsSupported = $this->checkForSupportedCurrency($submission);
+        
+        // if (!$currencyIsSupported) {
+        //     wp_send_json_error([
+        //         'message' => sprintf(__('%s is not supported by vivawallet', 'vivawallet-payment-for-paymattic'), $submission->currency),
+        //         'payment_error' => true
+        //     ], 423);
+        // }
+
+        // $successUrl = $this->getSuccessURL($form, $submission);
+        // $listener_url = add_query_arg(array(
+        //     'wppayform_payment' => $submission->id,
+        //     'payment_method' => $this->method,
+        //     'submission_hash' => $submission->submission_hash,
+        // ), $successUrl);
+
+        // $customer = array(
+        //     'email' => $submission->customer_email,
+        //     'name' => $submission->customer_name,
+        // );
+
+        // // we need to change according to the payment gateway documentation
+        // $paymentArgs = array(
+        //     'tx_ref' => $submission->submission_hash,
+        //     'amount' => number_format((float) $transaction->payment_total / 100, 2, '.', ''),
+        //     'currency' => $submission->currency,
+        //     'redirect_url' => $listener_url,
+        //     'customer' => $customer,
+        // );
+
+        // $paymentArgs = apply_filters('wppayform_vivawallet_payment_args', $paymentArgs, $submission, $transaction, $form);
+        // $payment = (new API())->makeApiCall('payments', $paymentArgs, $form->ID, 'POST');
+
+        // if (is_wp_error($payment)) {
+        //     do_action('wppayform_log_data', [
+        //         'form_id' => $submission->form_id,
+        //         'submission_id'        => $submission->id,
+        //         'type' => 'activity',
+        //         'created_by' => 'Paymattic BOT',
+        //         'title' => 'vivawallet Payment Redirect Error',
+        //         'content' => $payment->get_error_message()
+        //     ]);
+
+        //     wp_send_json_error([
+        //         'message'      => $payment->get_error_message()
+        //     ], 423);
+        // }
+
+        // construct payment redirect link
+        if ($paymentMode == 'live') {
+            $paymentLink = 'https://www.vivapayments.com/web/checkout?ref='.$orderCode;
+        } else {
+            $paymentLink = 'https://demo.vivapayments.com/web/checkout?ref'. $orderCode;
         }
-
-        $successUrl = $this->getSuccessURL($form, $submission);
-        $listener_url = add_query_arg(array(
-            'wppayform_payment' => $submission->id,
-            'payment_method' => $this->method,
-            'submission_hash' => $submission->submission_hash,
-        ), $successUrl);
-
-        $customer = array(
-            'email' => $submission->customer_email,
-            'name' => $submission->customer_name,
-        );
-
-        // we need to change according to the payment gateway documentation
-        $paymentArgs = array(
-            'tx_ref' => $submission->submission_hash,
-            'amount' => number_format((float) $transaction->payment_total / 100, 2, '.', ''),
-            'currency' => $submission->currency,
-            'redirect_url' => $listener_url,
-            'customer' => $customer,
-        );
-
-        $paymentArgs = apply_filters('wppayform_flutterwave_payment_args', $paymentArgs, $submission, $transaction, $form);
-        $payment = (new API())->makeApiCall('payments', $paymentArgs, $form->ID, 'POST');
-
-        if (is_wp_error($payment)) {
-            do_action('wppayform_log_data', [
-                'form_id' => $submission->form_id,
-                'submission_id'        => $submission->id,
-                'type' => 'activity',
-                'created_by' => 'Paymattic BOT',
-                'title' => 'vivawallet Payment Redirect Error',
-                'content' => $payment->get_error_message()
-            ]);
-
-            wp_send_json_error([
-                'message'      => $payment->get_error_message()
-            ], 423);
-        }
-
-        $paymentLink = Arr::get($payment, 'data.link');
 
         do_action('wppayform_log_data', [
             'form_id' => $form->ID,
@@ -337,7 +366,7 @@ class VivaWalletProcessor
         $submission = $submissionModel->getSubmission($transaction->submission_id);
 
         $formDataRaw = $submission->form_data_raw;
-        $formDataRaw['flutterwave_ipn_data'] = $updateData;
+        $formDataRaw['vivawallet_ipn_data'] = $updateData;
         $submissionData = array(
             'payment_status' => $status,
             'form_data_raw' => maybe_serialize($formDataRaw),
@@ -364,7 +393,7 @@ class VivaWalletProcessor
             'content' => sprintf(__('Transaction Marked as paid and vivawallet Transaction ID: %s', 'vivawallet-payment-for-paymattic'), $data['charge_id'])
         ));
 
-        do_action('wppayform/form_payment_success_flutterwave', $submission, $transaction, $transaction->form_id, $updateData);
+        do_action('wppayform/form_payment_success_vivawallet', $submission, $transaction, $transaction->form_id, $updateData);
         do_action('wppayform/form_payment_success', $submission, $transaction, $transaction->form_id, $updateData);
     }
 

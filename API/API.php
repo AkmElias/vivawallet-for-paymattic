@@ -92,7 +92,7 @@ class API
         // implements the logic to handle the IPN if needed, now its not implemented
     }
 
-    public function makeApiCall($path, $args, $formId, $method = 'GET', $accessTokenReq = false)
+    public function makeApiCall($path, $args, $formId, $method = 'GET', $accessTokenReq = false, $accessToken = null)
     {
         if ($accessTokenReq) {
             return $this->getAccessToken($path, $formId, $args);
@@ -102,30 +102,38 @@ class API
 
 
         $headers = [
-            'Content-type'  => 'application/json'
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . $accessToken
         ];
 
         $endPoint = 'https://demo-accounts.vivapayments.com/';
 
+       
         if ($keys['payment_mode'] == 'live') {
             $endPoint = 'https://api.vivapayments.com/';
         }
 
         // construct the endpoint with specific path
         $endPoint = $endPoint . $path;
-
+        // dd($endPoint, 'endPoint', $headers, 'headers', $args, 'args', $method, 'method');
+        // die();
         if ($method == 'POST') {
             $response = wp_remote_post($endPoint, [
                 'headers' => $headers,
-                'body'    => json_encode($args)
+                'body'    => [
+                    'amount' => 100,
+                ]
             
             ]);
+            dd($response, 'response', json_encode($args), $endPoint);
+            die();
         } else {
             $response = wp_remote_request($endPoint, [
                 'headers' => $headers,
                 'body'    => $args
             ]);
         }
+
 
         if (is_wp_error($response)) {
             return $response;
@@ -149,29 +157,27 @@ class API
     {
         $keys = (new VivaWalletSettings())->getApiKeys($formId);
 
-        $headers = [
-            'Content-type'  => 'application/json',
-            'Authorization' => [
-                'username' => $keys['test_client_id'],
-                'password' => $keys['test_client_secret']
-            ]
-        ];
-
         $endPoint = 'https://demo-accounts.vivapayments.com/';
 
         if ($keys['payment_mode'] == 'live') {
             $endPoint = 'https://accounts.vivapayments.com/';
-            $headers['Authorization']['username'] = $keys['live_client_id'];
-            $headers['Authorization']['password'] = $keys['live_client_secret'];
         }
+
+        $encoded = base64_encode($keys['client_id'] . ':' . $keys['client_secret']);
+        $headers = [
+            'Content-type'  => 'application/x-www-form-urlencoded',
+            'Authorization' => 'Basic ' . $encoded
+        ];
         
          // construct the endpoint with specific path
-         $endPoint = $endPoint . $path;
-
+        $endPoint = $endPoint . $path;
+        
         if ($method == 'POST') {
             $response = wp_remote_post($endPoint, [
                 'headers' => $headers,
-                'body'    => json_encode($args)
+                'body' =>  [
+                    'grant_type' => 'client_credentials'
+                ]
             
             ]);
         } else {
@@ -187,12 +193,12 @@ class API
 
         $body = wp_remote_retrieve_body($response);
         $responseData = json_decode($body, true);
-
+       
         if (!$responseData) {
             return [
                 'response' => array(
                     'success' => 'false',
-                    'error' => __('Unknown Vivalwallet API request error', 'wp-payment-form-pro')
+                    'error' => __('Invalid Vivalwallet API request.', 'wp-payment-form-pro')
                 )
             ];
         }

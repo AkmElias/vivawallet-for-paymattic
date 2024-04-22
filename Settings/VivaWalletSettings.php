@@ -252,12 +252,14 @@ class VivaWalletSettings extends BasePaymentMethod
         if ($isLive) {
             return array(
                 'client_id' => Arr::get($settings, 'live_client_id'),
-                'client_secret' => Arr::get($settings, 'live_client_secret')
+                'client_secret' => Arr::get($settings, 'live_client_secret'),
+                'payment_mode' => 'live'
             );
         }
         return array(
             'client_id' => Arr::get($settings, 'test_client_id'),
-            'client_secret' => Arr::get($settings, 'test_client_secret')
+            'client_secret' => Arr::get($settings, 'test_client_secret'),
+            'payment_mode' => 'test'
         );
     }
 }
