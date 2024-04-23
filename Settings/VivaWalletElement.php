@@ -15,13 +15,13 @@ class VivaWalletElement extends BaseComponent
 
     public function __construct()
     {
-        parent::__construct('flutterwave_gateway_element', 8);
+        parent::__construct('vivawallet_gateway_element', 8);
 
         add_action('wppayform/validate_gateway_api_' . $this->gateWayName, array($this, 'validateApi'));
         add_filter('wppayform/validate_gateway_api_' . $this->gateWayName, function ($data, $form) {
             return $this->validateApi();
         }, 2, 10);
-        add_action('wppayform/payment_method_choose_element_render_flutterwave', array($this, 'renderForMultiple'), 10, 3);
+        add_action('wppayform/payment_method_choose_element_render_vivawallet', array($this, 'renderForMultiple'), 10, 3);
         add_filter('wppayform/available_payment_methods', array($this, 'pushPaymentMethod'), 2, 1);
     }
 
@@ -30,7 +30,7 @@ class VivaWalletElement extends BaseComponent
         $methods['vivawallet'] = array(
             'label' => 'vivawallet',
             'isActive' => true,
-            'logo' => FLUTTERWAVE_PAYMENT_FOR_PAYMATTIC_URL . 'assets/flutterwave.svg',
+            'logo' => VIVAWALLET_PAYMENT_FOR_PAYMATTIC_URL . 'assets/flutterwave.svg',
             'editor_elements' => array(
                 'label' => array(
                     'label' => 'Payment Option Label',
@@ -46,7 +46,7 @@ class VivaWalletElement extends BaseComponent
     public function component()
     {
         return array(
-            'type' => 'flutterwave_gateway_element',
+            'type' => 'vivawallet_gateway_element',
             'editor_title' => 'VivaWallet Payment',
             'editor_icon' => '',
             'conditional_hide' => true,
@@ -80,13 +80,13 @@ class VivaWalletElement extends BaseComponent
 <?php return;
         }
 
-        echo '<input data-wpf_payment_method="vivawallet" type="hidden" name="__flutterwave_payment_gateway" value="vivawallet" />';
+        echo '<input data-wpf_payment_method="vivawallet" type="hidden" name="__vivawallet_payment_gateway" value="vivawallet" />';
     }
 
     public function renderForMultiple($paymentSettings, $form, $elements)
     {
         $component = $this->component();
-        $component['id'] = 'flutterwave_gateway_element';
+        $component['id'] = 'vivawallet_gateway_element';
         $component['field_options'] = $paymentSettings;
         $this->render($component, $form, $elements);
     }

@@ -100,14 +100,7 @@ class API
 
         $keys = (new VivaWalletSettings())->getApiKeys($formId);
 
-
-        $headers = [
-            'Content-Type'  => 'application/json',
-            'Authorization' => 'Bearer ' . $accessToken
-        ];
-
-        $endPoint = 'https://demo-accounts.vivapayments.com/';
-
+        $endPoint = 'https://demo-api.vivapayments.com/';
        
         if ($keys['payment_mode'] == 'live') {
             $endPoint = 'https://api.vivapayments.com/';
@@ -115,18 +108,21 @@ class API
 
         // construct the endpoint with specific path
         $endPoint = $endPoint . $path;
-        // dd($endPoint, 'endPoint', $headers, 'headers', $args, 'args', $method, 'method');
-        // die();
-        if ($method == 'POST') {
+
+        // Headers of the request
+        $headers = array(
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $accessToken
+        );
+
+
+        // Send the request
+       if ($method == 'POST') {
             $response = wp_remote_post($endPoint, [
                 'headers' => $headers,
-                'body'    => [
-                    'amount' => 100,
-                ]
+                'body'    => json_encode($args)
             
             ]);
-            dd($response, 'response', json_encode($args), $endPoint);
-            die();
         } else {
             $response = wp_remote_request($endPoint, [
                 'headers' => $headers,
@@ -134,11 +130,17 @@ class API
             ]);
         }
 
-
         if (is_wp_error($response)) {
-            return $response;
+            return [
+                'response' => array(
+                    'success' => 'false',
+                    'error' => $response->get_error_message()
+                )
+            
+            ];
         }
 
+        // retrieve the body of the response
         $body = wp_remote_retrieve_body($response);
         $responseData = json_decode($body, true);
 
@@ -150,6 +152,7 @@ class API
                 )
             ];
         }
+
         return $responseData;
     }
 

@@ -130,7 +130,6 @@ class VivaWalletProcessor
 
     public function handleRedirect($transaction, $submission, $form, $paymentMode)
     {
-       
         // Get accessToken
         $response = (new API())->makeApiCall('connect/token', [], $form->ID, 'POST', true, '');
 
@@ -142,26 +141,27 @@ class VivaWalletProcessor
         } 
 
         $accessToken = $response['access_token'];
-        dd($accessToken);
-        die();
+
         // now construct payment
         $paymentArgs = [
-            'amount' => $transaction->payment_total,
+            'amount' => (float) number_format($transaction->payment_total / 100, 2, '.', ''),
+            'customerTrns' => 'Payment for ' . get_bloginfo('name'),
+            'paymentTimeout' => 300
         ];
 
         // make create payment order api call
         $payment = (new API())->makeApiCall('checkout/v2/orders', $paymentArgs, $form->ID, 'POST', false, $accessToken);
-        dd($payment, 'order id');
-        die();
-        $orderCode = Arr::get($payment, 'OrderCode');
-        // $currencyIsSupported = $this->checkForSupportedCurrency($submission);
+
+        $orderCode = Arr::get($payment, 'orderCode');
+
+        $currencyIsSupported = $this->checkForSupportedCurrency($submission);
         
-        // if (!$currencyIsSupported) {
-        //     wp_send_json_error([
-        //         'message' => sprintf(__('%s is not supported by vivawallet', 'vivawallet-payment-for-paymattic'), $submission->currency),
-        //         'payment_error' => true
-        //     ], 423);
-        // }
+        if (!$currencyIsSupported) {
+            wp_send_json_error([
+                'message' => sprintf(__('%s is not supported by vivawallet', 'vivawallet-payment-for-paymattic'), $submission->currency),
+                'payment_error' => true
+            ], 423);
+        }
 
         // $successUrl = $this->getSuccessURL($form, $submission);
         // $listener_url = add_query_arg(array(
@@ -206,7 +206,7 @@ class VivaWalletProcessor
         if ($paymentMode == 'live') {
             $paymentLink = 'https://www.vivapayments.com/web/checkout?ref='.$orderCode;
         } else {
-            $paymentLink = 'https://demo.vivapayments.com/web/checkout?ref'. $orderCode;
+            $paymentLink = 'https://demo.vivapayments.com/web/checkout?ref='. $orderCode;
         }
 
         do_action('wppayform_log_data', [
