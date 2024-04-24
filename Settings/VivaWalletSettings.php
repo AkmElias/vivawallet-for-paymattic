@@ -89,7 +89,9 @@ class VivaWalletSettings extends BasePaymentMethod
     public static function checkForUpdate($slug)
     {
         $githubApi = "https://api.github.com/repos/WPManageNinja/{$slug}/releases";
-        $result = array(
+
+        // will be handled properly in future
+        return  array(
             'available' => 'no',
             'url' => '',
             'slug' => 'vivawallet-payment-for-paymattic'

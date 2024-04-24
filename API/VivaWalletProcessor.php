@@ -144,9 +144,18 @@ class VivaWalletProcessor
 
         // now construct payment
         $paymentArgs = [
-            'amount' => (float) number_format($transaction->payment_total / 100, 2, '.', ''),
-            'customerTrns' => 'Payment for ' . get_bloginfo('name'),
-            'paymentTimeout' => 300
+            'amount' => $transaction->payment_total,
+            'customerTrns' => 'Payment for ' . $form->title,
+            'customer' => array(
+                'email' => $submission->customer_email,
+                'phone' => $submission->customer_phone ? $submission->customer_phone : '0000000000',
+                'fullName' => $submission->customer_name,
+                'requestLang' => 'en-GB',
+                'countryCode' => 'GB',
+            ),
+            'paymentTimeout' => 300,
+            'allowRecurring' => false,
+            'requestLang' => 'en-US',
         ];
 
         // make create payment order api call
