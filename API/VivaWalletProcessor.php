@@ -145,7 +145,7 @@ class VivaWalletProcessor
         // now construct payment
         $paymentArgs = [
             'amount' => $transaction->payment_total,
-            'customerTrns' => 'Payment for ' . $form->title,
+            'customerTrns' => 'Payment for ' . get_bloginfo('name'),
             'customer' => array(
                 'email' => $submission->customer_email,
                 'phone' => $submission->customer_phone ? $submission->customer_phone : '0000000000',
@@ -153,15 +153,25 @@ class VivaWalletProcessor
                 'requestLang' => 'en-GB',
                 'countryCode' => 'GB',
             ),
+            'sourceCode' => (new \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->getApiKeys($submission->form_id)['source_code'],
             'paymentTimeout' => 300,
             'allowRecurring' => false,
             'requestLang' => 'en-US',
         ];
 
         // make create payment order api call
-        $payment = (new API())->makeApiCall('checkout/v2/orders', $paymentArgs, $form->ID, 'POST', false, $accessToken);
+        $response = (new API())->makeApiCall('checkout/v2/orders', $paymentArgs, $form->ID, 'POST', false, $accessToken);
 
-        $orderCode = Arr::get($payment, 'orderCode');
+        if (!isset($response['orderCode'])) {
+            wp_send_json_error([
+                'message' => $response['message'],
+                'payment_error' => true
+            ], 423);
+        }
+
+        // https://paymattic.com/pricing/?t=fa9c0eb7-d8d6-4a96-9fe7-e87ff32c9037&s=8463337861197764&lang=en-GB&eventId=0&eci=1
+      
+        $orderCode = Arr::get($response, 'orderCode');
 
         $currencyIsSupported = $this->checkForSupportedCurrency($submission);
         

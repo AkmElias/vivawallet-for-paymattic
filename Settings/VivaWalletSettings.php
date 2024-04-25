@@ -58,6 +58,8 @@ class VivaWalletSettings extends BasePaymentMethod
             'live_client_secret' => '',
             'test_client_id' => '',
             'test_client_secret' => '',
+            'live_source_code' => '',
+            'test_source_code' => '',
             'update_available' => static::checkForUpdate($slug),
         );
     }
@@ -195,6 +197,18 @@ class VivaWalletSettings extends BasePaymentMethod
                 'type' => 'live_secret_key',
                 'placeholder' => __('Live Client Secret', 'vivawallet-payment-for-paymattic')
             ),
+            'test_source_code' => array(
+                'value' => '',
+                'label' => __('Test Source Code', 'vivawallet-payment-for-paymattic'),
+                'type' => 'test_pub_key',
+                'placeholder' => __('Test Source Code', 'vivawallet-payment-for-paymattic')
+            ),
+            'live_source_code' => array(
+                'value' => '',
+                'label' => __('Live Source Code', 'vivawallet-payment-for-paymattic'),
+                'type' => 'live_pub_key',
+                'placeholder' => __('Live Source Code', 'vivawallet-payment-for-paymattic')
+            ),
             'desc' => array(
                 'value' => '<p>See our <a href="https://paymattic.com/docs/add-vivawallet-payment-gateway-in-paymattic" target="_blank" rel="noopener">documentation</a> to get more information about vivawallet setup.</p>',
                 'type' => 'html_attr',
@@ -227,13 +241,13 @@ class VivaWalletSettings extends BasePaymentMethod
         $mode = Arr::get($settings, 'payment_mode');
 
         if ($mode == 'test') {
-            if (empty(Arr::get($settings, 'test_client_secret')) || empty(Arr::get($settings, 'test_client_id'))) {
+            if (empty(Arr::get($settings, 'test_client_secret')) || empty(Arr::get($settings, 'test_client_id')) || empty(Arr::get($settings, 'test_source_code'))) {
                 $errors['test_api_key'] = __('Please provide Test credentials', 'vivawallet-payment-for-paymattic');
             }
         }
 
         if ($mode == 'live') {
-            if (empty(Arr::get($settings, 'live_client_secret')) || empty(Arr::get($settings, 'live_client_id'))) {
+            if (empty(Arr::get($settings, 'live_client_secret')) || empty(Arr::get($settings, 'live_client_id')) || empty(Arr::get($settings, 'live_source_code'))) {
                 $errors['live_api_key'] = __('Please provide Live credentials', 'vivawallet-payment-for-paymattic');
             }
         }
@@ -255,12 +269,14 @@ class VivaWalletSettings extends BasePaymentMethod
             return array(
                 'client_id' => Arr::get($settings, 'live_client_id'),
                 'client_secret' => Arr::get($settings, 'live_client_secret'),
+                'source_code' => Arr::get($settings, 'live_source_code'),
                 'payment_mode' => 'live'
             );
         }
         return array(
             'client_id' => Arr::get($settings, 'test_client_id'),
             'client_secret' => Arr::get($settings, 'test_client_secret'),
+            'source_code' => Arr::get($settings, 'test_source_code'),
             'payment_mode' => 'test'
         );
     }
