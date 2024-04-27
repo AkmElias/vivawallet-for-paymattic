@@ -10,6 +10,8 @@ use WPPayForm\Framework\Support\Arr;
 use WPPayForm\App\Models\Transaction;
 use WPPayForm\App\Models\Form;
 use WPPayForm\App\Models\Submission;
+use WPPayForm\App\Models\OrderItem;
+use WPPayForm\App\Services\CountryNames;
 use WPPayForm\App\Services\PlaceholderParser;
 use WPPayForm\App\Services\ConfirmationHelper;
 use WPPayForm\App\Models\SubmissionActivity;
@@ -78,7 +80,7 @@ class VivaWalletProcessor
         return $paymentMethod;
     }
 
-    public function makeFormPayment($transactionId, $submissionId, $form_data, $form, $hasSubscriptions)
+    public function makeFormPayment($transactionId, $submissionId, $form_data, $form, $hasSubscriptions, $totalPayable = 0)
     {      
         $paymentMode = $this->getPaymentMode();
        
@@ -91,7 +93,8 @@ class VivaWalletProcessor
         $transaction = $transactionModel->getTransaction($transactionId);
 
         $submission = (new Submission())->getSubmission($submissionId);
-        $this->handleRedirect($transaction, $submission, $form, $paymentMode);
+        $formDataFormatted = maybe_unserialize($submission->form_data_formatted);
+        $this->handleRedirect($transaction, $submission, $form, $form_data, $formDataFormatted, $paymentMode, $hasSubscriptions);
     }
 
     private function getSuccessURL($form, $submission)
@@ -128,7 +131,7 @@ class VivaWalletProcessor
         ), home_url());
     }
 
-    public function handleRedirect($transaction, $submission, $form, $paymentMode)
+    public function handleRedirect($transaction, $submission, $form, $form_data, $formDataFormatted, $paymentMode, $hasSubscriptions)
     {
         // Get accessToken
         $response = (new API())->makeApiCall('connect/token', [], $form->ID, 'POST', true, '');
@@ -141,23 +144,85 @@ class VivaWalletProcessor
         } 
 
         $accessToken = $response['access_token'];
+        $sourceCode = (new \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->getApiKeys($submission->form_id)['source_code'];
+
+        if (!$sourceCode) {
+            wp_send_json_error([
+                'message' => __('Source code is not set for this form', 'vivawallet-payment-for-paymattic'),
+                'payment_error' => true
+            ], 423);
+        }
+
+        $requireBillingAddress = Arr::get($form_data, '__payment_require_billing_address') == 'yes';
+        $paymentMode = $this->getPaymentMode($submission->form_id);
+        $address = '';
+        $language = 'en-GB';
+
+        if ($requireBillingAddress) {
+            if (empty($formDataFormatted['address_input'])) {
+                return [
+                    'response' => array(
+                        'success' => 'false',
+                        'error' => __('Billing Address is required.', 'wp-payment-form-pro')
+                    )
+                ];
+            }
+            $address = explode(',', $formDataFormatted['address_input']);
+        }
+
+        $hasAddress = isset($formDataFormatted['address_input']);
+
+        if ($hasAddress && !$address) {
+            $address = explode(',', $formDataFormatted['address_input']);
+        }
+
+        $country = CountryNames::getCountryCode(trim($address[5])) ? CountryNames::getCountryCode(trim($address[5])) : 'GB';
+
+        $orderItemsModel = new OrderItem();
+        $lineItems = $orderItemsModel->getOrderItems($submission->id)->toArray();
+        $hasLineItems = count($lineItems) ? true : false;
+
+        if (!$hasLineItems && !$hasSubscriptions) {
+           wp_send_json_error(array(
+                'message' => 'Vivawallet payment requires at least one line item or subscription',
+                'payment_error' => true,
+                'type' => 'error',
+                'form_events' => [
+                    'payment_failed'
+                ]
+            ), 423);
+        }
+
+        $orderItemModel = new OrderItem();
+        $discountItems = $orderItemModel->getDiscountItems($submission->id)->toArray();
+
+        // dd($lineItems);
+        // die();
 
         // now construct payment
-        $paymentArgs = [
-            'amount' => $transaction->payment_total,
-            'customerTrns' => 'Payment for ' . get_bloginfo('name'),
-            'customer' => array(
-                'email' => $submission->customer_email,
-                'phone' => $submission->customer_phone ? $submission->customer_phone : '0000000000',
-                'fullName' => $submission->customer_name,
-                'requestLang' => 'en-GB',
-                'countryCode' => 'GB',
-            ),
-            'sourceCode' => (new \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->getApiKeys($submission->form_id)['source_code'],
-            'paymentTimeout' => 300,
-            'allowRecurring' => false,
-            'requestLang' => 'en-US',
-        ];
+        $paymentArgs = [];
+        $paymentArgs['amount'] = $transaction->payment_total;
+        $paymentArgs['customerTrns'] = $hasLineItems ? $this->getCustomerTrns($submission, $lineItems, $discountItems): 'Payment for ' . get_bloginfo('name');
+        $paymentArgs['customer'] = $this->getCustomer($submission, $country, $language);
+        $paymentArgs['sourceCode'] = $sourceCode;
+        $paymentArgs['paymentTimeout'] = 300;
+        $paymentArgs['allowRecurring'] = false;
+
+        // $paymentArgs = [
+        //     'amount' => $transaction->payment_total,
+        //     'customerTrns' => 'Payment for ' . get_bloginfo('name'),
+        //     'customer' => array(
+        //         'email' => $submission->customer_email,
+        //         'phone' => $submission->customer_phone ? $submission->customer_phone : '0000000000',
+        //         'fullName' => $submission->customer_name,
+        //         'requestLang' => 'en-GB',
+        //         'countryCode' => 'GB',
+        //     ),
+        //     'sourceCode' => (new \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->getApiKeys($submission->form_id)['source_code'],
+        //     'paymentTimeout' => 300,
+        //     'allowRecurring' => false,
+        //     'requestLang' => 'en-US',
+        // ];
 
         // make create payment order api call
         $response = (new API())->makeApiCall('checkout/v2/orders', $paymentArgs, $form->ID, 'POST', false, $accessToken);
@@ -243,6 +308,38 @@ class VivaWalletProcessor
             'redirect_url' => $paymentLink,
             'message'      => __('You are redirecting to vivawallet.com to complete the purchase. Please wait while you are redirecting....', 'vivawallet-payment-for-paymattic'),
         ], 200);
+    }
+
+    public function getCustomerTrns($submission, $lineItems, $discountItems = [])
+    {
+        // in lineItems array every item has name and price and quantity
+        $customerTrns = '';
+        $lineItems = array_map(function ($item) {
+            return $item['item_name'] . ' x ' . $item['quantity'];
+        }, $lineItems);
+
+        // $discountItems = array_map(function ($item) {
+        //     return $item[''] . ' x ' . $item->quantity;
+        // }, $discountItems);
+
+        $customerTrns = implode(', ', $lineItems);
+
+        // if (count($discountItems)) {
+        //     $customerTrns .= ', ' . implode(', ', $discountItems);
+        // }
+        return $customerTrns;
+    }
+    public function getCustomer($submission, $country = 'GB', $language = 'en-GB')
+    {
+        $customer = array(
+            'email' => $submission->customer_email,
+            'phone' => $submission->customer_phone ? $submission->customer_phone : '0000000000',
+            'fullName' => $submission->customer_name ? $submission->customer_name : '',
+            'requestLang' => $language,
+            'countryCode' => $country,
+        );
+
+        return $customer;
     }
 
     public function checkForSupportedCurrency($submission)

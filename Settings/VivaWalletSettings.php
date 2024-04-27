@@ -22,7 +22,7 @@ class VivaWalletSettings extends BasePaymentMethod
             'vivawallet',
             'VivaWallet',
             [],
-            VIVAWALLET_PAYMENT_FOR_PAYMATTIC_URL . 'assets/flutterwave.svg' // follow naming convention of logo with lowercase exactly as payment key to avoid logo rendering hassle
+            VIVAWALLET_PAYMENT_FOR_PAYMATTIC_URL . 'assets/vivawallet.svg' // follow naming convention of logo with lowercase exactly as payment key to avoid logo rendering hassle
         );
     }
 
@@ -88,7 +88,7 @@ class VivaWalletSettings extends BasePaymentMethod
     //     );
     // }
 
-    public static function checkForUpdate($slug)
+    public static function checkForUpdate($slug) : array
     {
         $githubApi = "https://api.github.com/repos/WPManageNinja/{$slug}/releases";
 
@@ -134,7 +134,8 @@ class VivaWalletSettings extends BasePaymentMethod
         return $result;
     }
 
-    public static function getSettings () {
+    public static function getSettings () : array
+    {
         $setting = get_option('wppayform_payment_settings_vivawallet', []);
 
         // Check especially only for addons
