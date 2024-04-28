@@ -238,15 +238,6 @@ class VivaWalletProcessor
       
         $orderCode = Arr::get($response, 'orderCode');
 
-        $currencyIsSupported = $this->checkForSupportedCurrency($submission);
-        
-        if (!$currencyIsSupported) {
-            wp_send_json_error([
-                'message' => sprintf(__('%s is not supported by vivawallet', 'vivawallet-payment-for-paymattic'), $submission->currency),
-                'payment_error' => true
-            ], 423);
-        }
-
         // $successUrl = $this->getSuccessURL($form, $submission);
         // $listener_url = add_query_arg(array(
         //     'wppayform_payment' => $submission->id,
@@ -345,30 +336,7 @@ class VivaWalletProcessor
     public function checkForSupportedCurrency($submission)
     {
         $currency = $submission->currency;
-        $supportedCurrencies = array(
-            'GBP', 
-            'CAD',
-            'XAF', 
-            'CLP', 
-            'COP', 
-            'EGP', 
-            'EUR',
-            'GHS', 
-            'GNF', 
-            'KES', 
-            'MWK',
-            'MAD', 
-            'NGN', 
-            'RWF', 
-            'ZAR', 
-            'TZS', 
-            'UGX', 
-            'USD', 
-            'XOF', 
-            'ZMW', 
-            'SLL', 
-            'STD'
-            );
+        $supportedCurrencies = array();
 
         // check currencyis in supported currencies
         if (!in_array($currency, $supportedCurrencies)) {
