@@ -193,11 +193,20 @@ class VivaWalletProcessor
             ), 423);
         }
 
+        $currencyIsSupported = $this->checkForSupportedCurrency($submission);
+        
+        if (!$currencyIsSupported) {
+            wp_send_json_error([
+                'message' => sprintf(__('%s is not supported by vivawallet', 'vivawallet-payment-for-paymattic'), $submission->currency),
+                'payment_error' => true
+            ], 423);
+        }
+
+
+        $currencyCode = $this->getCurrencyCode($submission->currency);
+
         $orderItemModel = new OrderItem();
         $discountItems = $orderItemModel->getDiscountItems($submission->id)->toArray();
-
-        // dd($lineItems);
-        // die();
 
         // now construct payment
         $paymentArgs = [];
@@ -205,24 +214,9 @@ class VivaWalletProcessor
         $paymentArgs['customerTrns'] = $hasLineItems ? $this->getCustomerTrns($submission, $lineItems, $discountItems): 'Payment for ' . get_bloginfo('name');
         $paymentArgs['customer'] = $this->getCustomer($submission, $country, $language);
         $paymentArgs['sourceCode'] = $sourceCode;
+        $paymentArgs['currencyCode'] = $currencyCode ? $currencyCode : 978;
         $paymentArgs['paymentTimeout'] = 300;
         $paymentArgs['allowRecurring'] = false;
-
-        // $paymentArgs = [
-        //     'amount' => $transaction->payment_total,
-        //     'customerTrns' => 'Payment for ' . get_bloginfo('name'),
-        //     'customer' => array(
-        //         'email' => $submission->customer_email,
-        //         'phone' => $submission->customer_phone ? $submission->customer_phone : '0000000000',
-        //         'fullName' => $submission->customer_name,
-        //         'requestLang' => 'en-GB',
-        //         'countryCode' => 'GB',
-        //     ),
-        //     'sourceCode' => (new \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->getApiKeys($submission->form_id)['source_code'],
-        //     'paymentTimeout' => 300,
-        //     'allowRecurring' => false,
-        //     'requestLang' => 'en-US',
-        // ];
 
         // make create payment order api call
         $response = (new API())->makeApiCall('checkout/v2/orders', $paymentArgs, $form->ID, 'POST', false, $accessToken);
@@ -336,7 +330,17 @@ class VivaWalletProcessor
     public function checkForSupportedCurrency($submission)
     {
         $currency = $submission->currency;
-        $supportedCurrencies = array();
+        $supportedCurrencies = array(
+            'EUR',
+            'GBP',
+            'RON',
+            'PLN',
+            'CZK',
+            'HUF',
+            'SEK',
+            'DKK',
+            'BGN'
+        );
 
         // check currencyis in supported currencies
         if (!in_array($currency, $supportedCurrencies)) {
@@ -345,6 +349,22 @@ class VivaWalletProcessor
 
         return true;
 
+    }
+
+    public function getCurrencyCode($currency){
+        $currencyCode = array(
+            'EUR' => 978,
+            'GBP' => 826,
+            'RON' => 946,
+            'PLN' => 985,
+            'CZK' => 203,
+            'HUF' => 348,
+            'SEK' => 752,
+            'DKK' => 208,
+            'BGN' => 975
+        );
+
+        return $currencyCode[$currency];
     }
     public function handleSessionRedirectBack($data)
     {
