@@ -60,6 +60,10 @@ class VivaWalletSettings extends BasePaymentMethod
             'test_client_secret' => '',
             'live_source_code' => '',
             'test_source_code' => '',
+            'test_api_key' => '',
+            'live_api_key' => '',
+            'test_merchant_id' => '',
+            'live_merchant_id' => '',
             'update_available' => static::checkForUpdate($slug),
         );
     }
@@ -210,6 +214,30 @@ class VivaWalletSettings extends BasePaymentMethod
                 'type' => 'live_pub_key',
                 'placeholder' => __('Live Source Code', 'vivawallet-payment-for-paymattic')
             ),
+            'test_api_key' => array(
+                'value' => '',
+                'label' => __('Test API Key', 'vivawallet-payment-for-paymattic'),
+                'type' => 'test_pub_key',
+                'placeholder' => __('Test API Key', 'vivawallet-payment-for-paymattic')
+            ),
+            'live_api_key' => array(
+                'value' => '',
+                'label' => __('Live API Key', 'vivawallet-payment-for-paymattic'),
+                'type' => 'live_pub_key',
+                'placeholder' => __('Live API Key', 'vivawallet-payment-for-paymattic')
+            ),
+            'test_merchant_id' => array(
+                'value' => '',
+                'label' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic'),
+                'type' => 'test_pub_key',
+                'placeholder' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic')
+            ),
+            'live_merchant_id' => array(
+                'value' => '',
+                'label' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic'),
+                'type' => 'live_pub_key',
+                'placeholder' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic')
+            ),
             'desc' => array(
                 'value' => '<p>See our <a href="https://paymattic.com/docs/add-vivawallet-payment-gateway-in-paymattic" target="_blank" rel="noopener">documentation</a> to get more information about vivawallet setup.</p>',
                 'type' => 'html_attr',
@@ -271,6 +299,8 @@ class VivaWalletSettings extends BasePaymentMethod
                 'client_id' => Arr::get($settings, 'live_client_id'),
                 'client_secret' => Arr::get($settings, 'live_client_secret'),
                 'source_code' => Arr::get($settings, 'live_source_code'),
+                'api_key' => Arr::get($settings, 'live_api_key'),
+                'merchant_id' => Arr::get($settings, 'live_merchant_id'),
                 'payment_mode' => 'live'
             );
         }
@@ -278,6 +308,8 @@ class VivaWalletSettings extends BasePaymentMethod
             'client_id' => Arr::get($settings, 'test_client_id'),
             'client_secret' => Arr::get($settings, 'test_client_secret'),
             'source_code' => Arr::get($settings, 'test_source_code'),
+            'api_key' => Arr::get($settings, 'test_api_key'),
+            'merchant_id' => Arr::get($settings, 'test_merchant_id'),
             'payment_mode' => 'test'
         );
     }
