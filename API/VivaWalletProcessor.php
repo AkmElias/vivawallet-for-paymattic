@@ -232,12 +232,12 @@ class VivaWalletProcessor
       
         $orderCode = Arr::get($response, 'orderCode');
 
-        // $successUrl = $this->getSuccessURL($form, $submission);
-        // $listener_url = add_query_arg(array(
-        //     'wppayform_payment' => $submission->id,
-        //     'payment_method' => $this->method,
-        //     'submission_hash' => $submission->submission_hash,
-        // ), $successUrl);
+        $updateData = [
+            'charge_id'        => $orderCode,
+        ];
+
+        $transactionModel = new Transaction();
+        $transactionModel->updateTransaction($transaction->id, $updateData);
 
         // $customer = array(
         //     'email' => $submission->customer_email,
@@ -270,6 +270,8 @@ class VivaWalletProcessor
         //         'message'      => $payment->get_error_message()
         //     ], 423);
         // }
+
+
 
         // construct payment redirect link
         if ($paymentMode == 'live') {
@@ -367,54 +369,62 @@ class VivaWalletProcessor
         return $currencyCode[$currency];
     }
     public function handleSessionRedirectBack($data)
-    {
+    {   
+        $chargeId = Arr::get($data, 's');
+        $status = Arr::get($data, 'wppayform_payment');
 
-        $submissionId = intval($data['wppayform_payment']);
-        $submission = (new Submission())->getSubmission($submissionId);
-        $transaction = $this->getLastTransaction($submissionId);
-
-        $transactionId = Arr::get($data, 'transaction_id');
-        $paymentStatus = Arr::get($data, 'status');
-        // This hook will be usefull for the developers to do something after the payment is processed
-        do_action('wppayform/form_payment_processed', $submission->form_id, $submission, $data, $paymentStatus);
-
-        $payment = (new API())->makeApiCall('transactions/' . $transactionId . '/verify', [], $submission->form_id);
-
-        if (!$payment || is_wp_error($payment)) {
-            do_action('wppayform/form_payment_failed',$submission, $submission->form_id, $data, 'razorpay');
-            return;
-        }
-
-        if (is_wp_error($payment)) {
-            do_action('wppayform_log_data', [
-                'form_id' => $submission->form_id,
-                'submission_id' => $submission->id,
-                'type' => 'info',
-                'created_by' => 'PayForm Bot',
-                'content' => $payment->get_error_message()
-            ]);
-        }
-
-        $transaction = $this->getLastTransaction($submissionId);
-
-        if (!$transaction || $transaction->payment_method != $this->method || $transaction->status === 'paid') {
-            return;
-        }
-
-        do_action('wppayform/form_submission_activity_start', $transaction->form_id);
-
-        if ($paymentStatus === 'successful') {
+        if ($status == 'wpf_success') {
             $status = 'paid';
-        } else if ($paymentStatus === 'failed') {
+        } else if ($status == 'wpf_failed') {
             $status = 'failed';
         } else {
             $status = 'pending';
         }
 
+
+        $transaction = new Transaction();
+        $transaction = $transaction->getTransactionByChargeId($chargeId);
+
+        if (!$transaction || $transaction->payment_method != $this->method || $transaction->status === 'paid') {
+            return;
+        }
+
+        $submission = (new Submission())->getSubmission($transaction->submission_id);
+
+        $transactionId = $transaction->id;
+
         $updateData = [
-            'payment_note'     => maybe_serialize($payment),
-            'charge_id'        => $transactionId,
+            'charge_id' => $chargeId,
+            'payment_note' => maybe_serialize($data),
+            'status' => $status,
+            'updated_at' => current_time('mysql')
         ];
+
+        // This hook will be usefull for the developers to do something after the payment is processed
+        do_action('wppayform/form_payment_processed', $submission->form_id, $submission, $data, $status);
+
+        // $payment = (new API())->makeApiCall('transactions/' . $transactionId . '/verify', [], $submission->form_id);
+
+        // if (!$payment || is_wp_error($payment)) {
+        //     do_action('wppayform/form_payment_failed',$submission, $submission->form_id, $data, 'razorpay');
+        //     return;
+        // }
+
+        // if (is_wp_error($payment)) {
+        //     do_action('wppayform_log_data', [
+        //         'form_id' => $submission->form_id,
+        //         'submission_id' => $submission->id,
+        //         'type' => 'info',
+        //         'created_by' => 'PayForm Bot',
+        //         'content' => $payment->get_error_message()
+        //     ]);
+        // }
+
+        // $transaction = $this->getLastTransaction($submission->id);
+
+       
+        do_action('wppayform/form_submission_activity_start', $transaction->form_id);
+
 
         $this->markAsPaid($status, $updateData, $transaction);
     }
