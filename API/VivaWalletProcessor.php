@@ -369,7 +369,7 @@ class VivaWalletProcessor
         return $currencyCode[$currency];
     }
     public function handleSessionRedirectBack($data)
-    {   
+    {
         $chargeId = Arr::get($data, 's');
         $status = Arr::get($data, 'wppayform_payment');
 
@@ -381,52 +381,70 @@ class VivaWalletProcessor
             $status = 'pending';
         }
 
-
         $transaction = new Transaction();
+        // get the transaction by charge id which is the order code
         $transaction = $transaction->getTransactionByChargeId($chargeId);
 
         if (!$transaction || $transaction->payment_method != $this->method || $transaction->status === 'paid') {
             return;
         }
 
+        if ($status == $transaction->status) {
+            return;
+        }
+
         $submission = (new Submission())->getSubmission($transaction->submission_id);
-
-        $transactionId = $transaction->id;
-
-        $updateData = [
-            'charge_id' => $chargeId,
-            'payment_note' => maybe_serialize($data),
-            'status' => $status,
-            'updated_at' => current_time('mysql')
-        ];
 
         // This hook will be usefull for the developers to do something after the payment is processed
         do_action('wppayform/form_payment_processed', $submission->form_id, $submission, $data, $status);
 
-        // $payment = (new API())->makeApiCall('transactions/' . $transactionId . '/verify', [], $submission->form_id);
+        if ($status == 'failed') {
+            $updateData = [
+                'charge_id' => $chargeId,
+                'status' => 'failed',
+            ];
+            $this->markAsFailed($status, $updateData, $transaction);
+        }
 
-        // if (!$payment || is_wp_error($payment)) {
-        //     do_action('wppayform/form_payment_failed',$submission, $submission->form_id, $data, 'razorpay');
-        //     return;
-        // }
+        // get the real transaction id from the data from request
+        $transactionId = Arr::get($data, 't');
 
-        // if (is_wp_error($payment)) {
-        //     do_action('wppayform_log_data', [
-        //         'form_id' => $submission->form_id,
-        //         'submission_id' => $submission->id,
-        //         'type' => 'info',
-        //         'created_by' => 'PayForm Bot',
-        //         'content' => $payment->get_error_message()
-        //     ]);
-        // }
-
-        // $transaction = $this->getLastTransaction($submission->id);
-
-       
-        do_action('wppayform/form_submission_activity_start', $transaction->form_id);
-
-
-        $this->markAsPaid($status, $updateData, $transaction);
+        // Get accessToken to verify the transaction
+        $response = (new API())->makeApiCall('connect/token', [], $submission->form_id, 'POST', true, '');
+      
+        if (isset($response['access_token'])) {
+            $payment = (new API())->makeApiCall('/checkout/v2/transactions/' . $transactionId, [], $submission->form_id, 'GET', false, $response['access_token']);
+            if (isset($payment['error'])) {
+                do_action('wppayform_log_data', [
+                    'form_id' => $submission->form_id,
+                    'submission_id' => $submission->id,
+                    'type' => 'info',
+                    'created_by' => 'PayForm Bot',
+                    'content' => $payment['error']
+                ]);
+                return;
+            } else {
+                // payment varified. make payment paid
+                $updateData = [
+                    'charge_id' => $transactionId,
+                    'payment_note' => maybe_serialize($data),
+                    'status' => $status,
+                    'updated_at' => current_time('mysql')
+                ];
+            
+                do_action('wppayform/form_submission_activity_start', $transaction->form_id);
+                $this->markAsPaid($status, $updateData, $transaction);
+            }
+        } else {
+            do_action('wppayform_log_data', [
+                'form_id' => $submission->form_id,
+                'submission_id' => $submission->id,
+                'type' => 'info',
+                'created_by' => 'PayForm Bot',
+                'content' => $response['error']
+            ]);
+            return;
+        } 
     }
 
     public function handleRefund($refundAmount, $submission, $vendorTransaction)
@@ -509,6 +527,43 @@ class VivaWalletProcessor
 
         do_action('wppayform/form_payment_success_vivawallet', $submission, $transaction, $transaction->form_id, $updateData);
         do_action('wppayform/form_payment_success', $submission, $transaction, $transaction->form_id, $updateData);
+    }
+
+    public function markAsFailed($status, $updateData, $transaction)
+    {
+        $submissionModel = new Submission();
+        $submission = $submissionModel->getSubmission($transaction->submission_id);
+
+        $formDataRaw = $submission->form_data_raw;
+        $formDataRaw['vivawallet_ipn_data'] = $updateData;
+        $submissionData = array(
+            'payment_status' => $status,
+            'form_data_raw' => maybe_serialize($formDataRaw),
+            'updated_at' => current_time('Y-m-d H:i:s')
+        );
+
+        $submissionModel->where('id', $transaction->submission_id)->update($submissionData);
+
+        $transactionModel = new Transaction();
+        $data = array(
+            'charge_id' => $updateData['charge_id'],
+            'payment_note' => $updateData['payment_note'],
+            'status' => $status,
+            'updated_at' => current_time('Y-m-d H:i:s')
+        );
+        $transactionModel->where('id', $transaction->id)->update($data);
+
+        $transaction = $transactionModel->getTransaction($transaction->id);
+        SubmissionActivity::createActivity(array(
+            'form_id' => $transaction->form_id,
+            'submission_id' => $transaction->submission_id,
+            'type' => 'info',
+            'created_by' => 'PayForm Bot',
+            'content' => sprintf(__('Transaction Marked as failed', 'vivawallet-payment-for-paymattic'))
+        ));
+
+        do_action('wppayform/form_payment_failed_vivawallet', $submission, $transaction, $transaction->form_id, $updateData);
+        do_action('wppayform/form_payment_failed', $submission, $transaction, $transaction->form_id, $updateData);
     }
 
     public function validateSubscription($paymentItems)
