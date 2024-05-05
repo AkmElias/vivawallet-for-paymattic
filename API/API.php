@@ -19,6 +19,7 @@ class API
     }
     public function verifyIPN()
     {
+
         if (!isset($_REQUEST['wpf_vivawallet_listener'])) {
             return;
         }
@@ -206,6 +207,59 @@ class API
             ];
         }
         return $responseData;
+    }
+
+    public function getWebhookVerificationKey()
+    {
+        $key = get_option('vivawallet_webhook_key');
+        if ($key) {
+            return wp_send_json(['key' => $key], 200);
+        }
+
+        $keys = (new VivaWalletSettings())->getApiKeys();
+
+        $endPoint = 'https://demo.vivapayments.com/';
+
+        if ($keys['payment_mode'] == 'live') {
+            $endPoint = 'https://www.vivapayments.com/';
+        }
+
+        $encoded = base64_encode($keys['merchant_id'] . ':' . $keys['api_key']);
+        $headers = [
+            'Content-type'  => 'application/x-www-form-urlencoded',
+            'Authorization' => 'Basic ' . $encoded
+        ];
+        
+         // construct the endpoint with specific path
+        $endPoint = $endPoint . 'api/messages/config/token';
+       
+        $response = wp_remote_request($endPoint, [
+            'headers' => $headers,
+            'body'    => []
+        ]);
+        
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $responseData = json_decode($body, true);
+       
+        if (!$responseData) {
+            return [
+                'response' => array(
+                    'success' => 'false',
+                    'error' => __('Invalid Vivalwallet API request.', 'wp-payment-form-pro')
+                )
+            ];
+        }
+
+        if ( isset($responseData['key'])) {
+            update_option('vivawallet_webhook_key', $responseData['key']);
+        }
+
+        return wp_send_json($responseData, 200);
     }
     
 }
