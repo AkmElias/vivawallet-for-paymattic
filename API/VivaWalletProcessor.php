@@ -176,8 +176,11 @@ class VivaWalletProcessor
             $address = explode(',', $formDataFormatted['address_input']);
         }
 
-        $country = CountryNames::getCountryCode(trim($address[5])) ? CountryNames::getCountryCode(trim($address[5])) : 'GB';
-
+        $country = 'GB';
+        if (isset($address[5]) && !empty($address[5])) {
+            $country = CountryNames::getCountryCode(trim($address[5]));
+        }
+      
         $orderItemsModel = new OrderItem();
         $lineItems = $orderItemsModel->getOrderItems($submission->id)->toArray();
         $hasLineItems = count($lineItems) ? true : false;
