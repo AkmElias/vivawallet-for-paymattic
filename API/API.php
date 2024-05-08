@@ -19,64 +19,27 @@ class API
     }
     public function verifyIPN()
     {
-
         if (!isset($_REQUEST['wpf_vivawallet_listener'])) {
             return;
         }
-        // Check the request method is POST
+
+        // webhook endpoint varification call from vivawallet
         if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] != 'POST') {
-            return;
+            $key_value = $this->getWebhookVerificationKey();
+	  	    wp_send_json($key_value);
         }
 
         // Set initial post data to empty string
         $post_data = '';
 
-        // Fallback just in case post_max_size is lower than needed
-        if (ini_get('allow_url_fopen')) {
-            $post_data = file_get_contents('php://input');
-        } else {
-            // If allow_url_fopen is not enabled, then make sure that post_max_size is large enough
-            ini_set('post_max_size', '12M');
-        }
-        // Start the encoded data collection with notification command
-        $encoded_data = '';
+        $post_data = @file_get_contents('php://input');
 
-        // Get current arg separator
-        $arg_separator = ini_get('arg_separator.output');
+        $body = json_decode($post_data);
 
-        // Verify there is a post_data
-        if ($post_data || strlen($post_data) > 0) {
-            // Append the data
-            $encoded_data .= $arg_separator . $post_data;
-        } else {
-            // Check if POST is empty
-            if (empty($_POST)) {
-                // Nothing to do
-                return;
-            } else {
-                // Loop through each POST
-                foreach ($_POST as $key => $value) {
-                    // Encode the value and append the data
-                    $encoded_data .= $arg_separator . "$key=" . urlencode($value);
-                }
-            }
-        }
+        error_log(print_r($body, true));
 
-        // Convert collected post data to an array
-        parse_str($encoded_data, $encoded_data_array);
-
-        foreach ($encoded_data_array as $key => $value) {
-            if (false !== strpos($key, 'amp;')) {
-                $new_key = str_replace('&amp;', '&', $key);
-                $new_key = str_replace('amp;', '&', $new_key);
-                unset($encoded_data_array[$key]);
-                $encoded_data_array[$new_key] = $value;
-            }
-        }
-
-        $defaults = $_REQUEST;
-        $encoded_data_array = wp_parse_args($encoded_data_array, $defaults);
-        $this->handleIpn($encoded_data_array);
+        // commented out for now, will handle the IPN later
+        $this->handleIpn($body);
         exit(200);
     }
 
