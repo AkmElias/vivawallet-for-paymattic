@@ -32,17 +32,18 @@ class VivaWalletProcessor
     {
         new  \VivaWalletPaymentForPaymattic\Settings\VivaWalletElement();
         (new  \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->init();
-        (new \VivaWalletPaymentForPaymattic\API\API())->init();
 
+        add_action('wppayform/payment_success_vivawallet', array($this, 'handlePaid'), 10, 1);
         add_filter('wppayform/choose_payment_method_for_submission', array($this, 'choosePaymentMethod'), 10, 4);
-        add_action('wppayform/form_submission_make_payment_vivawallet', array($this, 'makeFormPayment'), 10, 6);
+        add_action('wppayform/form_submission_make_payment_' . $this->method, array($this, 'makeFormPayment'), 10, 6);
         add_action('wppayform_payment_frameless_' . $this->method, array($this, 'handleSessionRedirectBack'));
         add_filter('wppayform/entry_transactions_' . $this->method, array($this, 'addTransactionUrl'), 10, 2);
         // add_action('wppayform_ipn_vivawallet_action_refunded', array($this, 'handleRefund'), 10, 3);
         add_filter('wppayform/submitted_payment_items_' . $this->method, array($this, 'validateSubscription'), 10, 4);
+
+        // do_actions triggered in API class won't be able to catch if the class is instantiated before above add_actions defined
+        (new \VivaWalletPaymentForPaymattic\API\API())->init();
     }
-
-
 
     protected function getPaymentMode($formId = false)
     {
@@ -370,6 +371,80 @@ class VivaWalletProcessor
         );
 
         return $currencyCode[$currency];
+    }
+
+    public function handlePaid($data)
+    {
+        if(!$data){
+            return;
+        }
+
+        $orderCode = $data->OrderCode;
+        $transactionId = $data->TransactionId;
+        $status = $data->StatusId;
+
+        $status = $status == 'F' ? 'paid' : 'failed';
+
+        $transaction = new Transaction();
+        // get the transaction by charge id which is the order code
+        $transaction = $transaction->getTransactionByChargeId($orderCode);
+
+        if (!$transaction || $transaction->payment_method != $this->method || $transaction->status === 'paid') {
+            return;
+        }
+
+        if ($status == $transaction->status) {
+            return;
+        }
+
+        $submission = (new Submission())->getSubmission($transaction->submission_id);
+
+        if ($status == 'failed') {
+            $updateData = [
+                'charge_id' => $orderCode,
+                'status' => 'failed',
+            ];
+            $this->markAsFailed($status, $updateData, $transaction);
+        }
+
+        // Get accessToken to verify the transaction
+        $response = (new API())->makeApiCall('connect/token', [], $submission->form_id, 'POST', true, '');
+      
+        if (isset($response['access_token'])) {
+            $payment = (new API())->makeApiCall('/checkout/v2/transactions/' . $transactionId, [], $submission->form_id, 'GET', false, $response['access_token']);
+            if (isset($payment['error'])) {
+                do_action('wppayform_log_data', [
+                    'form_id' => $submission->form_id,
+                    'submission_id' => $submission->id,
+                    'type' => 'info',
+                    'created_by' => 'PayForm Bot',
+                    'content' => $payment['error']
+                ]);
+                return;
+            } else {
+                // payment varified. make payment paid
+                $updateData = [
+                    'charge_id' => $transactionId,
+                    'payment_note' => maybe_serialize($data),
+                    'status' => $status,
+                    'updated_at' => current_time('mysql')
+                ];
+            
+                do_action('wppayform/form_submission_activity_start', $transaction->form_id);
+                $this->markAsPaid($status, $updateData, $transaction);
+            }
+        } else {
+            do_action('wppayform_log_data', [
+                'form_id' => $submission->form_id,
+                'submission_id' => $submission->id,
+                'type' => 'info',
+                'created_by' => 'PayForm Bot',
+                'content' => $response['error']
+            ]);
+            return;
+        } 
+
+
     }
     public function handleSessionRedirectBack($data)
     {

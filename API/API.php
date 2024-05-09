@@ -37,7 +37,6 @@ class API
         $body = json_decode($post_data);
 
         error_log(print_r($body, true));
-
         // commented out for now, will handle the IPN later
         $this->handleIpn($body);
         exit(200);
@@ -45,13 +44,20 @@ class API
 
     protected function handleIpn($data)
     {
-        $submissionId = intval(Arr::get($data, 'submission_id'));
-        if (!$submissionId || empty($data['id'])) {
+        if (empty($data)) {
             return;
         }
-        $submission = Submission::where('id', $submissionId)->first();
-        if (!$submission) {
+
+        if(!$data->EventTypeId)  {
             return;
+        }
+        $eventId = intval($data->EventTypeId);
+
+        // now only handles Transaction Payment Created event
+        if($eventId == 1796) {
+            do_action('wppayform/payment_success_vivawallet', $data->EventData);
+        } else {
+            do_action('wppayform/payment_failed_vivawallet', $data);
         }
         // implements the logic to handle the IPN if needed, now its not implemented
     }
@@ -78,7 +84,6 @@ class API
             'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . $accessToken
         );
-
 
         // Send the request
        if ($method == 'POST') {
