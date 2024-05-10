@@ -33,7 +33,7 @@ class VivaWalletProcessor
         new  \VivaWalletPaymentForPaymattic\Settings\VivaWalletElement();
         (new  \VivaWalletPaymentForPaymattic\Settings\VivaWalletSettings())->init();
 
-        add_action('wppayform/payment_success_vivawallet', array($this, 'handlePaid'), 10, 1);
+        add_action('wppayform/payment_success_' . $this->method, array($this, 'handlePaid'), 10, 1);
         add_filter('wppayform/choose_payment_method_for_submission', array($this, 'choosePaymentMethod'), 10, 4);
         add_action('wppayform/form_submission_make_payment_' . $this->method, array($this, 'makeFormPayment'), 10, 6);
         add_action('wppayform_payment_frameless_' . $this->method, array($this, 'handleSessionRedirectBack'));
@@ -448,8 +448,8 @@ class VivaWalletProcessor
     }
     public function handleSessionRedirectBack($data)
     {
-        $chargeId = Arr::get($data, 's');
-        $status = Arr::get($data, 'wppayform_payment');
+        $chargeId = sanitize_text_field(Arr::get($data, 'cid'));
+        $status = sanitize_text_field(Arr::get($data, 'wppayform_payment'));
 
         if ($status == 'wpf_success') {
             $status = 'paid';
@@ -481,7 +481,29 @@ class VivaWalletProcessor
                 'charge_id' => $chargeId,
                 'status' => 'failed',
             ];
-            $this->markAsFailed($status, $updateData, $transaction);
+
+            $submissionData = array(
+                'payment_status' => $status,
+                'updated_at' => current_time('Y-m-d H:i:s')
+            );
+            $submissionModel = new Submission();
+            $submissionModel->where('id', $transaction->submission_id)->update($submissionData);
+
+            $transactionModel = new Transaction();
+            $data = array(
+                'status' => $status,
+                'updated_at' => current_time('Y-m-d H:i:s')
+            );
+            $transactionModel->where('id', $transaction->id)->update($data);
+
+            $transaction = $transactionModel->getTransaction($transaction->id);
+            SubmissionActivity::createActivity(array(
+                'form_id' => $transaction->form_id,
+                'submission_id' => $transaction->submission_id,
+                'type' => 'info',
+                'created_by' => 'PayForm Bot',
+                'content' => sprintf(__('Transaction Marked as failed', 'vivawallet-payment-for-paymattic'))
+            ));
         }
 
         // get the real transaction id from the data from request
