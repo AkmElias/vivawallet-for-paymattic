@@ -255,22 +255,22 @@ class VivaWalletSettings extends BasePaymentMethod
                 'type' => 'html_attr',
                 'placeholder' => __('Description', 'vivawallet-payment-for-paymattic')
             ),
-            // 'success_url' => array(
-            //     'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set this as your Success URL: " . "</h3>".  "<p> " . htmlspecialchars($successURL, ENT_QUOTES, 'UTF-8') . "</p>",
-            //     'label' => __('Success URL', 'vivawallet-payment-for-paymattic'),
-            //     'type' => 'html_attr',
-            //     'placeholder' => __('Success URL', 'vivawallet-payment-for-paymattic')
-            // ),
-            // 'failure_url' => array(
-            //     'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set this as your Failure URL: " . "</h3>".  "<p> " . htmlspecialchars($failureURL, ENT_QUOTES, 'UTF-8') . "</p>",
-            //     'label' => __('Failure URL', 'vivawallet-payment-for-paymattic'),
-            //     'type' => 'html_attr',
-            //     'placeholder' => __('Failure URL', 'vivawallet-payment-for-paymattic')
-            // ),
             'webhook_desc' => array(
-                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Required VivaWallet Webhook Setup</h3> <p>In order for Vaivawallet to function completely for payments, you must configure your vivawallet webhooks. Visit your <a href='https://dashboard.vivawallet.co/settings/developers#callbacks' target='_blank' rel='noopener'>account dashboard</a> to configure them. Please add a webhook endpoint for the URL below. </p> <p><b>Webhook URL: </b><code> ". site_url('?wpf_vivawallet_listener=1') . "</code></p> <p>See <a href='https://paymattic.com/docs/add-vivawallet-payment-gateway-in-paymattic#webhook' target='_blank' rel='noopener'>our documentation</a> for more information.</div>",
+                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Required VivaWallet Webhook Setup</h3> <p>In order for Vaivawallet to function completely for payments, you must configure your vivawallet webhooks. Visit your <a href='https://dashboard.vivawallet.co/settings/developers#callbacks' target='_blank' rel='noopener'>account dashboard</a> to configure them. Please add a webhook endpoint for the URL below. </p> <p><b>Webhook URL: </b><code> ". site_url('?wpf_vivawallet_listener=1') . "</code></p> <p>See <a href='https://paymattic.com/docs/add-vivawallet-payment-gateway-in-paymattic#webhook' target='_blank' rel='noopener'>our documentation</a> for more information. <p><b>Please enable the following Webhook events for this URL:</b></p> <ul> <li><code>Transaction Payment Created</code></li></ul></div>",
                 'label' => __('Webhook URL', 'vivawallet-payment-for-paymattic'),
                 'type' => 'html_attr',
+            ),
+            'success_url' => array(
+                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set Your Success URL:" . "</h3>".  "<p> Ex: " . htmlspecialchars($successURL, ENT_QUOTES, 'UTF-8') . "</p> <span style='font-weight: bold'> This part is required - '?wppayform_payment=wpf_success&payment_method=vivawallet'</span>",
+                'label' => __('Success URL', 'vivawallet-payment-for-paymattic'),
+                'type' => 'html_attr',
+                'placeholder' => __('Success URL', 'vivawallet-payment-for-paymattic')
+            ),
+            'failure_url' => array(
+                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set Your Failure URL:" . "</h3>".  "<p> Ex: " . htmlspecialchars($failureURL, ENT_QUOTES, 'UTF-8') . "</p> <span style='font-weight: bold'> This part is required - '?wppayform_payment=wpf_failed&payment_method=vivawallet'</span>",
+                'label' => __('Failure URL', 'vivawallet-payment-for-paymattic'),
+                'type' => 'html_attr',
+                'placeholder' => __('Failure URL', 'vivawallet-payment-for-paymattic')
             ),
             'is_pro_item' => array(
                 'value' => 'yes',
