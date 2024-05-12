@@ -448,7 +448,7 @@ class VivaWalletProcessor
     }
     public function handleSessionRedirectBack($data)
     {
-        $chargeId = sanitize_text_field(Arr::get($data, 'cid'));
+        $orderCode = sanitize_text_field(Arr::get($data, 'ocd'));
         $status = sanitize_text_field(Arr::get($data, 'wppayform_payment'));
 
         if ($status == 'wpf_success') {
@@ -460,8 +460,8 @@ class VivaWalletProcessor
         }
 
         $transaction = new Transaction();
-        // get the transaction by charge id which is the order code
-        $transaction = $transaction->getTransactionByChargeId($chargeId);
+        // get the transaction by charge id which is the order code in this case
+        $transaction = $transaction->getTransactionByChargeId($orderCode);
 
         if (!$transaction || $transaction->payment_method != $this->method || $transaction->status === 'paid') {
             return;
@@ -478,7 +478,7 @@ class VivaWalletProcessor
 
         if ($status == 'failed') {
             $updateData = [
-                'charge_id' => $chargeId,
+                'charge_id' => $orderCode,
                 'status' => 'failed',
             ];
 

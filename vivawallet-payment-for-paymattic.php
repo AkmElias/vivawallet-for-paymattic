@@ -43,9 +43,20 @@ if (!class_exists('VivaWalletPaymentForPaymattic')) {
         public function init()
         {
             require_once VIVAWALLET_PAYMENT_FOR_PAYMATTIC_DIR . '/API/VivaWalletProcessor.php';
+            $this->modifyGetRequest();
             (new VivaWalletPaymentForPaymattic\API\VivaWalletProcessor())->init();
 
             $this->loadTextDomain();
+        }
+
+        public function modifyGetRequest()
+        {
+            // Check if the 's' parameter is set in the URL and it's a GET request type of wppayform_payment
+            if (isset($_GET['s']) && isset($_GET['wppayform_payment']) && $_GET['payment_method'] == 'vivawallet') {
+                // Rename 's' to 'cid' and unset 's', here ocd is the orderCode for vivawallet, or could be anything, handles it according to the needs
+                $_GET['ocd'] = sanitize_text_field($_GET['s']);
+                unset($_GET['s']);
+            }
         }
 
         public function loadTextDomain()
@@ -60,7 +71,6 @@ if (!class_exists('VivaWalletPaymentForPaymattic')) {
 
         public function hasFree()
         {
-
             return defined('WPPAYFORM_VERSION');
         }
 
