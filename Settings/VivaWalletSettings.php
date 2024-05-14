@@ -261,13 +261,13 @@ class VivaWalletSettings extends BasePaymentMethod
                 'type' => 'html_attr',
             ),
             'success_url' => array(
-                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set Your Success URL:" . "</h3>".  "<p> Ex: " . htmlspecialchars($successURL, ENT_QUOTES, 'UTF-8') . "</p> <span style='font-weight: bold'> This part is required - '?wppayform_payment=wpf_success&payment_method=vivawallet'</span>",
+                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set Your Success URL on VivaWallet" . "</h3>".  "<p> <strong> Ex: </strong> <code> " . htmlspecialchars($successURL, ENT_QUOTES, 'UTF-8') . " </code> </p> <span style='font-weight: bold'> This part is required - '?wppayform_payment=wpf_success&payment_method=vivawallet'</span>",
                 'label' => __('Success URL', 'vivawallet-payment-for-paymattic'),
                 'type' => 'html_attr',
                 'placeholder' => __('Success URL', 'vivawallet-payment-for-paymattic')
             ),
             'failure_url' => array(
-                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set Your Failure URL:" . "</h3>".  "<p> Ex: " . htmlspecialchars($failureURL, ENT_QUOTES, 'UTF-8') . "</p> <span style='font-weight: bold'> This part is required - '?wppayform_payment=wpf_failed&payment_method=vivawallet'</span>",
+                'value' => "<h3><span style='color: #ef680e; margin-right: 2px'>*</span>Set Your Failure URLon VivaWallet" . "</h3>".  "<p> <strong> Ex: </strong> <code>" . htmlspecialchars($failureURL, ENT_QUOTES, 'UTF-8') . "</code> </p> <span style='font-weight: bold'> This part is required - '?wppayform_payment=wpf_failed&payment_method=vivawallet'</span>",
                 'label' => __('Failure URL', 'vivawallet-payment-for-paymattic'),
                 'type' => 'html_attr',
                 'placeholder' => __('Failure URL', 'vivawallet-payment-for-paymattic')

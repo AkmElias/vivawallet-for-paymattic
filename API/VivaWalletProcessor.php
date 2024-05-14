@@ -98,40 +98,6 @@ class VivaWalletProcessor
         $this->handleRedirect($transaction, $submission, $form, $form_data, $formDataFormatted, $paymentMode, $hasSubscriptions);
     }
 
-    private function getSuccessURL($form, $submission)
-    {
-        // Check If the form settings have success URL
-        $confirmation = Form::getConfirmationSettings($form->ID);
-        $confirmation = ConfirmationHelper::parseConfirmation($confirmation, $submission);
-        if (
-            ($confirmation['redirectTo'] == 'customUrl' && $confirmation['customUrl']) ||
-            ($confirmation['redirectTo'] == 'customPage' && $confirmation['customPage'])
-        ) {
-            if ($confirmation['redirectTo'] == 'customUrl') {
-                $url = $confirmation['customUrl'];
-            } else {
-                $url = get_permalink(intval($confirmation['customPage']));
-            }
-            $url = add_query_arg(array(
-                'payment_method' => 'vivawallet'
-            ), $url);
-            return PlaceholderParser::parse($url, $submission);
-        }
-        // now we have to check for global Success Page
-        $globalSettings = get_option('wppayform_confirmation_pages');
-        if (isset($globalSettings['confirmation']) && $globalSettings['confirmation']) {
-            return add_query_arg(array(
-                'wpf_submission' => $submission->submission_hash,
-                'payment_method' => 'vivawallet'
-            ), get_permalink(intval($globalSettings['confirmation'])));
-        }
-        // In case we don't have global settings
-        return add_query_arg(array(
-            'wpf_submission' => $submission->submission_hash,
-            'payment_method' => 'vivawallet'
-        ), home_url());
-    }
-
     public function handleRedirect($transaction, $submission, $form, $form_data, $formDataFormatted, $paymentMode, $hasSubscriptions)
     {
         // Get accessToken
@@ -185,6 +151,8 @@ class VivaWalletProcessor
         $orderItemsModel = new OrderItem();
         $lineItems = $orderItemsModel->getOrderItems($submission->id)->toArray();
         $hasLineItems = count($lineItems) ? true : false;
+        $langCode = CountryNames::getLanguageCodeByCountryCode($country);
+        $language = $langCode? $langCode : $language;
 
         if (!$hasLineItems && !$hasSubscriptions) {
            wp_send_json_error(array(
@@ -243,40 +211,6 @@ class VivaWalletProcessor
         $transactionModel = new Transaction();
         $transactionModel->updateTransaction($transaction->id, $updateData);
 
-        // $customer = array(
-        //     'email' => $submission->customer_email,
-        //     'name' => $submission->customer_name,
-        // );
-
-        // // we need to change according to the payment gateway documentation
-        // $paymentArgs = array(
-        //     'tx_ref' => $submission->submission_hash,
-        //     'amount' => number_format((float) $transaction->payment_total / 100, 2, '.', ''),
-        //     'currency' => $submission->currency,
-        //     'redirect_url' => $listener_url,
-        //     'customer' => $customer,
-        // );
-
-        // $paymentArgs = apply_filters('wppayform_vivawallet_payment_args', $paymentArgs, $submission, $transaction, $form);
-        // $payment = (new API())->makeApiCall('payments', $paymentArgs, $form->ID, 'POST');
-
-        // if (is_wp_error($payment)) {
-        //     do_action('wppayform_log_data', [
-        //         'form_id' => $submission->form_id,
-        //         'submission_id'        => $submission->id,
-        //         'type' => 'activity',
-        //         'created_by' => 'Paymattic BOT',
-        //         'title' => 'vivawallet Payment Redirect Error',
-        //         'content' => $payment->get_error_message()
-        //     ]);
-
-        //     wp_send_json_error([
-        //         'message'      => $payment->get_error_message()
-        //     ], 423);
-        // }
-
-
-
         // construct payment redirect link
         if ($paymentMode == 'live') {
             $paymentLink = 'https://www.vivapayments.com/web/checkout?ref='.$orderCode;
@@ -306,18 +240,21 @@ class VivaWalletProcessor
         // in lineItems array every item has name and price and quantity
         $customerTrns = '';
         $lineItems = array_map(function ($item) {
-            return $item['item_name'] . ' x ' . $item['quantity'];
+            if ($item['type'] == 'tax_line') {
+                return $item['item_name'];
+            }
+            return $item['item_name'] . ' x ' . $item['quantity'] . ' = ' . number_format($item['item_price'] / 100, 2, '.', '');
         }, $lineItems);
 
-        // $discountItems = array_map(function ($item) {
-        //     return $item[''] . ' x ' . $item->quantity;
-        // }, $discountItems);
+        $discountItems = array_map(function ($item) {
+            return $item['item_name'];
+        }, $discountItems);
 
         $customerTrns = implode(', ', $lineItems);
 
-        // if (count($discountItems)) {
-        //     $customerTrns .= ', ' . implode(', ', $discountItems);
-        // }
+        if (count($discountItems)) {
+            $customerTrns .= ', Applied Coupons: (' . implode(', ', $discountItems) . ')';
+        }
         return $customerTrns;
     }
     public function getCustomer($submission, $country = 'GB', $language = 'en-GB')
@@ -332,6 +269,7 @@ class VivaWalletProcessor
 
         return $customer;
     }
+
 
     public function checkForSupportedCurrency($submission)
     {
@@ -381,6 +319,8 @@ class VivaWalletProcessor
 
         $orderCode = $data->OrderCode;
         $transactionId = $data->TransactionId;
+        $cardNumber = (string) $data->CardNumber;
+        $lastFourDigits = substr($cardNumber, -4);
         $status = $data->StatusId;
 
         $status = $status == 'F' ? 'paid' : 'failed';
@@ -426,6 +366,7 @@ class VivaWalletProcessor
                 $updateData = [
                     'charge_id' => $transactionId,
                     'payment_note' => maybe_serialize($data),
+                    'card_last_4' => $lastFourDigits,
                     'status' => $status,
                     'updated_at' => current_time('mysql')
                 ];
@@ -473,7 +414,7 @@ class VivaWalletProcessor
 
         $submission = (new Submission())->getSubmission($transaction->submission_id);
 
-        // This hook will be usefull for the developers to do something after the payment is processed
+        // This hook will be useful for the developers to do something after the payment is processed
         do_action('wppayform/form_payment_processed', $submission->form_id, $submission, $data, $status);
 
         if ($status == 'failed') {
@@ -504,9 +445,10 @@ class VivaWalletProcessor
                 'created_by' => 'PayForm Bot',
                 'content' => sprintf(__('Transaction Marked as failed', 'vivawallet-payment-for-paymattic'))
             ));
+            return;
         }
 
-        // get the real transaction id from the data from request
+        // get the real transaction id from the $data received from vivawallet
         $transactionId = Arr::get($data, 't');
 
         // Get accessToken to verify the transaction
