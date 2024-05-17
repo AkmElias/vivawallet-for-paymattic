@@ -25,8 +25,7 @@ class API
 
         // webhook endpoint varification call from vivawallet
         if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] != 'POST') {
-            $key_value = $this->getWebhookVerificationKey();
-	  	    wp_send_json($key_value);
+            $this->getWebhookVerificationKey();
         }
 
         // Set initial post data to empty string
@@ -160,7 +159,13 @@ class API
         }
 
         if (is_wp_error($response)) {
-            return $response;
+            return [
+                'response' => array(
+                    'success' => 'false',
+                    'error' => $response->get_error_message()
+                )
+            
+            ];
         }
 
         $body = wp_remote_retrieve_body($response);
@@ -179,9 +184,14 @@ class API
 
     public function getWebhookVerificationKey()
     {
-        $key = get_option('vivawallet_webhook_key');
-        if ($key) {
-            return wp_send_json(['key' => $key], 200);
+        $lastRequest = get_option('vivawallet_webhook_verification_time', 0);
+        
+        if ($lastRequest) {
+            $timeDiff = time() - $lastRequest;
+            // we allow only 60 req per minute, which won't be able to down the server
+            if ($timeDiff < 1) {
+                wp_send_json_error(__('Too many requests. Please try again later.', 'wp-payment-form-pro'), 429);
+            }
         }
 
         $keys = (new VivaWalletSettings())->getApiKeys();
@@ -206,26 +216,18 @@ class API
             'body'    => []
         ]);
         
-
         if (is_wp_error($response)) {
-            return $response;
+           wp_send_json_error($response->get_error_message(), 400);
         }
 
         $body = wp_remote_retrieve_body($response);
         $responseData = json_decode($body, true);
        
         if (!$responseData) {
-            return [
-                'response' => array(
-                    'success' => 'false',
-                    'error' => __('Invalid Vivalwallet API request.', 'wp-payment-form-pro')
-                )
-            ];
+            wp_send_json_error(__('Invalid Vivalwallet API request.', 'wp-payment-form-pro'), 400);
         }
 
-        if ( isset($responseData['key'])) {
-            update_option('vivawallet_webhook_key', $responseData['key']);
-        }
+        update_option('vivawallet_webhook_verification_time', time());
 
         return wp_send_json($responseData, 200);
     }

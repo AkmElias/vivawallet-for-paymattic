@@ -105,7 +105,7 @@ class VivaWalletProcessor
 
         if (!isset($response['access_token'])) {
             wp_send_json_error([
-                'message' => __('Unable to get access token from vivawallet', 'vivawallet-payment-for-paymattic'),
+                'message' => $response['error'],
                 'payment_error' => true
             ], 423);
         } 
