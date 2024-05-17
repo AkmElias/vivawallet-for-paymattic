@@ -229,25 +229,25 @@ class VivaWalletSettings extends BasePaymentMethod
             'test_api_key' => array(
                 'value' => '',
                 'label' => __('Test API Key', 'vivawallet-payment-for-paymattic'),
-                'type' => 'test_pub_key',
+                'type' => 'test_secret_key',
                 'placeholder' => __('Test API Key', 'vivawallet-payment-for-paymattic')
             ),
             'live_api_key' => array(
                 'value' => '',
                 'label' => __('Live API Key', 'vivawallet-payment-for-paymattic'),
-                'type' => 'live_pub_key',
+                'type' => 'live_secret_key',
                 'placeholder' => __('Live API Key', 'vivawallet-payment-for-paymattic')
             ),
             'test_merchant_id' => array(
                 'value' => '',
                 'label' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic'),
-                'type' => 'test_pub_key',
+                'type' => 'test_secret_key',
                 'placeholder' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic')
             ),
             'live_merchant_id' => array(
                 'value' => '',
                 'label' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic'),
-                'type' => 'live_pub_key',
+                'type' => 'live_secret_key',
                 'placeholder' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic')
             ),
             'desc' => array(
