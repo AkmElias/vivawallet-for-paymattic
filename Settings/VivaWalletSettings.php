@@ -49,7 +49,7 @@ class VivaWalletSettings extends BasePaymentMethod
     /**
      * @return Array of default fields
      */
-    public static function settingsKeys()
+    public static function settingsKeys() : array
     {
         $slug = 'vivawallet-payment-for-paymattic';
         return array(
@@ -68,36 +68,13 @@ class VivaWalletSettings extends BasePaymentMethod
         );
     }
 
-    // public static function settingsKeys() : array
-    // {
-    //     $slug = 'moneris-payment-for-paymattic';
-
-    //     return array(
-    //         'is_active' => 'no',
-    //         'payment_mode' => 'test',
-    //         'checkout_type' => 'modal',
-    //         'test_store_id' => '',
-    //         'test_api_token' => '',
-    //         'test_checkout_id' => '',
-    //         'live_store_id' => '',
-    //         'live_api_token' => '',
-    //         'live_checkout_id' => '',
-    //         'payment_channels' => [],
-    //         'update_available' => array(
-    //             'available' => 'no',
-    //             'url' => '',
-    //             'slug' => $slug
-            
-    //         ),
-    //     );
-    // }
 
     public static function checkForUpdate($slug) : array
     {
         $githubApi = "https://api.github.com/repos/WPManageNinja/{$slug}/releases";
 
         // will be handled properly in future
-        return  array(
+        $result = array(
             'available' => 'no',
             'url' => '',
             'slug' => 'vivawallet-payment-for-paymattic'
@@ -105,7 +82,10 @@ class VivaWalletSettings extends BasePaymentMethod
 
         $response = wp_remote_get($githubApi);
 
-        $response = wp_remote_get($githubApi);
+        if (is_wp_error($response)) {
+            return $result;
+        }
+
         $releases = json_decode($response['body']);
         if (isset($releases->documentation_url)) {
             return $result;
@@ -190,6 +170,42 @@ class VivaWalletSettings extends BasePaymentMethod
                 ),
                 'type' => 'payment_mode'
             ),
+            'test_source_code' => array(
+                'value' => '',
+                'label' => __('Test Source Code', 'vivawallet-payment-for-paymattic'),
+                'type' => 'test_pub_key',
+                'placeholder' => __('Test Source Code', 'vivawallet-payment-for-paymattic')
+            ),
+            'live_source_code' => array(
+                'value' => '',
+                'label' => __('Live Source Code', 'vivawallet-payment-for-paymattic'),
+                'type' => 'live_pub_key',
+                'placeholder' => __('Live Source Code', 'vivawallet-payment-for-paymattic')
+            ),
+            'test_merchant_id' => array(
+                'value' => '',
+                'label' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic'),
+                'type' => 'test_secret_key',
+                'placeholder' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic')
+            ),
+            'live_merchant_id' => array(
+                'value' => '',
+                'label' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic'),
+                'type' => 'live_secret_key',
+                'placeholder' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic')
+            ),
+            'test_api_key' => array(
+                'value' => '',
+                'label' => __('Test API Key', 'vivawallet-payment-for-paymattic'),
+                'type' => 'test_secret_key',
+                'placeholder' => __('Test API Key', 'vivawallet-payment-for-paymattic')
+            ),
+            'live_api_key' => array(
+                'value' => '',
+                'label' => __('Live API Key', 'vivawallet-payment-for-paymattic'),
+                'type' => 'live_secret_key',
+                'placeholder' => __('Live API Key', 'vivawallet-payment-for-paymattic')
+            ),
             'test_client_id' => array(
                 'value' => '',
                 'label' => __('Test Client ID', 'vivawallet-payment-for-paymattic'),
@@ -213,42 +229,6 @@ class VivaWalletSettings extends BasePaymentMethod
                 'label' => __('Live Client Secret', 'vivawallet-payment-for-paymattic'),
                 'type' => 'live_secret_key',
                 'placeholder' => __('Live Client Secret', 'vivawallet-payment-for-paymattic')
-            ),
-            'test_source_code' => array(
-                'value' => '',
-                'label' => __('Test Source Code', 'vivawallet-payment-for-paymattic'),
-                'type' => 'test_pub_key',
-                'placeholder' => __('Test Source Code', 'vivawallet-payment-for-paymattic')
-            ),
-            'live_source_code' => array(
-                'value' => '',
-                'label' => __('Live Source Code', 'vivawallet-payment-for-paymattic'),
-                'type' => 'live_pub_key',
-                'placeholder' => __('Live Source Code', 'vivawallet-payment-for-paymattic')
-            ),
-            'test_api_key' => array(
-                'value' => '',
-                'label' => __('Test API Key', 'vivawallet-payment-for-paymattic'),
-                'type' => 'test_secret_key',
-                'placeholder' => __('Test API Key', 'vivawallet-payment-for-paymattic')
-            ),
-            'live_api_key' => array(
-                'value' => '',
-                'label' => __('Live API Key', 'vivawallet-payment-for-paymattic'),
-                'type' => 'live_secret_key',
-                'placeholder' => __('Live API Key', 'vivawallet-payment-for-paymattic')
-            ),
-            'test_merchant_id' => array(
-                'value' => '',
-                'label' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic'),
-                'type' => 'test_secret_key',
-                'placeholder' => __('Test Merchant ID', 'vivawallet-payment-for-paymattic')
-            ),
-            'live_merchant_id' => array(
-                'value' => '',
-                'label' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic'),
-                'type' => 'live_secret_key',
-                'placeholder' => __('Live Merchant ID', 'vivawallet-payment-for-paymattic')
             ),
             'desc' => array(
                 'value' => '<p>See our <a href="https://paymattic.com/docs/add-vivawallet-payment-gateway-in-paymattic" target="_blank" rel="noopener">documentation</a> to get more information about vivawallet setup.</p>',
