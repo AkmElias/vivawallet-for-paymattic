@@ -30,7 +30,7 @@ class VivaWalletElement extends BaseComponent
         $methods['vivawallet'] = array(
             'label' => 'vivawallet',
             'isActive' => true,
-            'logo' => VIVAWALLET_PAYMENT_FOR_PAYMATTIC_URL . 'assets/flutterwave.svg',
+            'logo' => VIVAWALLET_PAYMENT_FOR_PAYMATTIC_URL . 'assets/vivawallet.svg',
             'editor_elements' => array(
                 'label' => array(
                     'label' => 'Payment Option Label',
