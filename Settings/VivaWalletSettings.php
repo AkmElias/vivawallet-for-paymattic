@@ -236,7 +236,7 @@ class VivaWalletSettings extends BasePaymentMethod
                 'placeholder' => __('Live Client Secret', 'vivawallet-payment-for-paymattic')
             ),
             'desc' => array(
-                'value' => '<p>See our <a href="https://paymattic.com/docs/add-vivawallet-payment-gateway-in-paymattic" target="_blank" rel="noopener">documentation</a> to get more information about vivawallet setup.</p>',
+                'value' => '<p>See our <a href="https://paymattic.com/docs/how-to-integrate-viva-wallet-with-paymattic" target="_blank" rel="noopener">documentation</a> to get more information about vivawallet setup.</p>',
                 'type' => 'html_attr',
                 'placeholder' => __('Description', 'vivawallet-payment-for-paymattic')
             ),
