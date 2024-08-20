@@ -10,7 +10,7 @@
  * Plugin Name: Vivawallet Payment for paymattic
  * Plugin URI: https://paymattic.com/
  * Description: Vivawallet payment gateway for paymattic. Vivawallet is the leading payment gateway in Europe.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: WPManageNinja LLC
  * Author URI: https://paymattic.com/
  * License: GPLv2 or later
@@ -27,7 +27,7 @@ defined('ABSPATH') or die;
 define('VIVAWALLET_PAYMENT_FOR_PAYMATTIC', true);
 define('VIVAWALLET_PAYMENT_FOR_PAYMATTIC_DIR', __DIR__);
 define('VIVAWALLET_PAYMENT_FOR_PAYMATTIC_URL', plugin_dir_url(__FILE__));
-define('VIVAWALLET_PAYMENT_FOR_PAYMATTIC_VERSION', '1.0.0');
+define('VIVAWALLET_PAYMENT_FOR_PAYMATTIC_VERSION', '1.0.1');
 
 
 if (!class_exists('VivaWalletPaymentForPaymattic')) {
